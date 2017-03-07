@@ -34,19 +34,35 @@ int main () {
 		//reset
 		Horse* raceHorses[5] = {NULL, NULL, NULL, NULL, NULL};
 
-		//find horces to race (simply by looking at how much is still unknown to each horse individually, needs to be changed to look at how much is unknown/can be gained for any set of horses)
-		for(int i = 0; i < 5; i++) {
-			for (int j = 0; j < numHorses; j++) {
+		//find first horce to race
+		for (int j = 0; j < numHorses; j++) {
+			if(horseList[j]->simpleAntiUsefulness() < numHorses-1 && 
+				(raceHorses[0] == NULL || horseList[j]->simpleAntiUsefulness() < raceHorses[0]->simpleAntiUsefulness())) {
+				raceHorses[0] = horseList[j];
+			}
+		}
+
+		//find remaining horces to race
+		for (int i = 1; i < 5; i++) { //for the final 4 horses
+			int usefulness= 0;
+			for (int j = 0; j < numHorses; j++) {	//for every horse
+				int tempUsefulness= 0;
 				bool inArray = false;
-				for(int k = 0; k < i; k++) {
+				for(int k = 0; k < i; k++) {	//for every horse already selected to race
 					if (raceHorses[k] == horseList[j]) {
 						inArray = true;
 						break;
+						
+					} else if (raceHorses[k] != NULL) {
+						if (raceHorses[k]->fasterThan.empty() || std::find(raceHorses[k]->fasterThan.begin(), raceHorses[k]->fasterThan.end(), horseList[j]) == raceHorses[k]->fasterThan.end()) 
+							tempUsefulness++;
+						if (raceHorses[k]->slowerThan.empty() || std::find(raceHorses[k]->slowerThan.begin(), raceHorses[k]->slowerThan.end(), horseList[j]) == raceHorses[k]->slowerThan.end()) 
+							tempUsefulness++;
 					}
 				}
-
-				if(!inArray&& horseList[j]->simpleAntiUsefulness() < numHorses-1 && 
-					(raceHorses[i] == NULL || horseList[j]->simpleAntiUsefulness() < raceHorses[i]->simpleAntiUsefulness())) {
+				if(!inArray && tempUsefulness > 0 &&
+					(raceHorses[i] == NULL || tempUsefulness > usefulness)) {
+					usefulness = tempUsefulness;
 					raceHorses[i] = horseList[j];
 				}
 			}
@@ -60,12 +76,23 @@ int main () {
 		//end if no horses to race
 		if (length == 0) break;
 
-		//race horses
+		//printf("\n");
 		printHorses(raceHorses, length);
+		// for (int i = 0; i < 5; i++) {
+		// 	printf("i=%d, timer=%d\n fasterThan:", i, raceHorses[i]->timer);
+		// 	for(Horse* h : raceHorses[i]->fasterThan) {
+		// 		printf(" %d", h->timer);
+		// 	}
+		// 	printf("\nSlowerThan:");
+		// 	for(Horse* h : raceHorses[i]->slowerThan) {
+		// 		printf(" %d", h->timer);
+		// 	}
+		// 	printf("\n\n");
+		// }
 		race(raceHorses, length);
-		printHorses(raceHorses, length);
+		//printHorses(raceHorses, length);
 
-		//extend analysis, doesn't actually improve anything
+		// extend analysis, doesn't actually improve anything
 		// for(int j = 0; j < numHorses; j++) {
 		// 	bool wasRaced = false;
 		// 	for(int i = 0; i < 5; i++) {
@@ -118,17 +145,31 @@ void race(Horse* seg[], int len) {
 		for(int i = 0; i < len-1; i++) {
 			if (seg[i+1]->timer < seg[i]->timer) {
 				swappedAny = true;
+
 				Horse* tempHorse = seg[i];
 				seg[i] = seg[i+1];
 				seg[i+1] = tempHorse;
-				seg[i+1]->fasterThan.push_back(seg[i]);
-				seg[i]->slowerThan.push_back(seg[i+1]);
-			} else if (seg[i]->timer < seg[i+1]->timer) {
-				seg[i]->fasterThan.push_back(seg[i+1]);
-				seg[i+1]->slowerThan.push_back(seg[i]);
 			}
+
 		}
 	} while(swappedAny);
+
+	for(int i = 0; i < 5; i++) {
+		for(int j = 0; j < 5; j++) {
+			if (j == i) continue;
+			if (i < j) {
+				if (seg[i]->fasterThan.empty() || std::find(seg[i]->fasterThan.begin(), seg[i]->fasterThan.end(), seg[j]) == seg[i]->fasterThan.end())
+				seg[i]->fasterThan.push_back(seg[j]);
+				if (seg[j]->slowerThan.empty() || std::find(seg[j]->slowerThan.begin(), seg[j]->slowerThan.end(), seg[i]) == seg[j]->slowerThan.end())
+				seg[j]->slowerThan.push_back(seg[i]);
+			} else {
+				if (seg[j]->fasterThan.empty() || std::find(seg[j]->fasterThan.begin(), seg[j]->fasterThan.end(), seg[i]) == seg[j]->fasterThan.end())
+				seg[j]->fasterThan.push_back(seg[i]);
+				if (seg[i]->slowerThan.empty() || std::find(seg[i]->slowerThan.begin(), seg[i]->slowerThan.end(), seg[j]) == seg[i]->slowerThan.end())
+				seg[i]->slowerThan.push_back(seg[j]);
+			}
+		}
+	}
 }
 
 void printHorses(Horse* horseList[], int len) {
